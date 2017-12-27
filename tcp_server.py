@@ -3,7 +3,7 @@
 
 import socket, threading
 import time
-import articles
+
 ARTICLE1 = {
   'link' : 'http://www.ynet.co.il/articles/0,7340,L-4713571,00.html',
   'img' : 'https://images1.ynet.co.il/PicServer4/2014/08/05/5506384/52203970100690640360no.jpg',
@@ -72,26 +72,59 @@ def add_article_to_html(package_general_article,i):
                           '<h3>' + article['content'] + '</h3>' + \
                           new_package_article[content_index + 16:]
     return new_package_article
+def OK_200_header_builder(type):
+    ok_200_header = \
+    "HTTP/1.1 200 OK"\
+    +"\nLast-Modified:" + time.asctime(time.localtime(time.time()))\
+    +"\nConnection: Close"\
+    +"\nContent-Type: " + type\
+    +"\n\n"
 
-server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server_ip = '0.0.0.0'
-server_port = 80
-server.bind((server_ip, server_port))
-server.listen(5)
-GenericOkHeader = """HTTP/1.1 200 OK
-Last-Modified:"""+time.asctime( time.localtime(time.time()) )+"""\n\nConnection: Close
-Content-Length:
-"""
-okHeader = """HTTP/1.1 200 OK
-Content-Type: text/html
-Connection: Close
-Content-Length:
-"""
-okHeaderImage = """HTTP/1.1 200 OK
-Content-Type: image/*
-Connection: Close
-Content-Length: """
-notFound = """HTTP/1.1 404 Not Found
+    print ok_200_header
+    return ok_200_header
+def build_homepage(data):
+    num_of_articles = data[data.index("?id=") + 4]
+    num_of_articles = int(num_of_articles)
+    location = "Files/template.html"
+    print "location: " + location
+    f = open(location, 'r')
+    package = f.read()
+    f.close()
+    start_of_article = package.index('<div class="row">')
+    end_of_article = package.index('</div><!--/.row-->') + 18
+    package_start = package[:start_of_article - 1]
+    package_general_article = package[start_of_article:end_of_article]
+    package_end = package[end_of_article + 1:]
+    package = package_start
+    if (num_of_articles != 0):
+        for i in range(1, num_of_articles + 1):
+            package_article = add_article_to_html(package_general_article, i - 1)
+            package = package + package_article
+    package = package + package_end
+    header = OK_200_header_builder("html")
+    package = header + package
+    return package
+def find_type(location):
+    location_parts = location.split('.')
+    type = location_parts[len(location_parts)-1]
+    return type
+def find_file(location):
+    if not (location.startswith("Files/")):
+        location = "Files/" + location
+    print "location: " + location
+    type = find_type(location)
+    if type=="jpg" or type=="png":
+        f = open(location, 'rb')
+        type = "image/"+type
+    else:
+        f = open(location, 'r')
+    package = f.read()
+    f.close()
+    header = OK_200_header_builder(type)
+    package = header + package
+    return package
+
+not_found_404 = """HTTP/1.1 404 Not Found
 Date: Sun, 18 Oct 2012 10:36:20 GMT
 Server: Apache/2.2.14 (Win32)
 Content-Length: 230
@@ -108,73 +141,43 @@ Content-Type: text/html
    <p>The requested URL /t.html was not found on this server.</p>
 </body>
 </html>"""
-notFoundHeader = """HTTP/1.1 404 Not Found
-Content-Length: 0
-Connection: Close
-Content-Type: image/jpg"""
-not_modified_header = """HTTP/1.1 304 Not Modified
+not_found_404_header = """HTTP/1.1 404 Not Found
 Content-Length: 0
 Connection: Close"""
+not_modified_304_header = """HTTP/1.1 304 Not Modified
+Content-Length: 0
+Connection: Close"""
+
+
+server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server_ip = '0.0.0.0'
+server_port = 80
+server.bind((server_ip, server_port))
+server.listen(5)
+
 while True:
     client_socket, client_address = server.accept()
-    print 'Connection from: ', client_address
+    #print 'Connection from: ', client_address
     data = client_socket.recv(1024)
     ifat=1
     while ifat:
-        print 'Received: ', data
+        #print 'Received: ', data
         if "If-Modified-Since:" in data:
-            package = not_modified_header
+            package = not_modified_304_header
+            print "heeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
         else:
             if(data.split('/')[1].startswith("homepage")):
-                num_of_articles = data[data.index("?id=")+4]
-                num_of_articles = int(num_of_articles)
-                print "22222222222222222222222"
-                location = "Files/template.html"
-                f = open(location, 'r')
-                package = f.read()
-                f.close()
-                start_of_article = package.index('<div class="row">')
-                end_of_article = package.index('</div><!--/.row-->')+18
-                print "end:"+package[end_of_article-18:end_of_article]
-                package_start = package[:start_of_article-1]
-                package_general_article =package[start_of_article:end_of_article]
-                package_end = package[end_of_article+1:]
-                package = package_start
-                if(num_of_articles!=0):
-                    for i in range(1,num_of_articles+1):
-                        package_article = add_article_to_html(package_general_article,i-1)
-                        package = package+package_article
-                package = package+package_end
-                package = okHeader + (str(len(package))) + "\n\n" + package
+                package = build_homepage(data)
+            #request for a specific file
             else:
                 location = data.split()[1][1:]
                 try:
-                    print "location: "+location
-                    if not(location.startswith("Files/")):
-                        location = "Files/"+location
-                    if location.endswith("html"):
-                        print "html"
-                        f = open(location, 'r')
-                        package = f.read()
-                        package = okHeader+(str(len(package)))+"\n\n"+package
-                    elif location.endswith("jpg") or location.endswith("png"):
-                        print "jpg or png"
-                        f = open(location, 'rb')
-                        package = f.read()
-                        package = okHeaderImage +(str(len(package)))+"\n\n"+ package
-                    else:
-                        print "else"
-                        f = open(location, 'r')
-                        package = f.read()
-                        package = GenericOkHeader + (str(len(package))) + "\n\n" + package
-                    #print package
-                    f.close()
+                    package = find_file(location)
                 except IOError:
                     print "111111111111111111111111111111\n"
-                    package = notFoundHeader
+                    package = not_found_404_header
         client_socket.send(package)
-        print package
         #data = client_socket.recv(1024)
-        print 'Client disconnected'
+        #print 'Client disconnected'
         client_socket.close()
         ifat=0
