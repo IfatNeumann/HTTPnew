@@ -72,57 +72,26 @@ def add_article_to_html(package_general_article,i):
                           '<h3>' + article['content'] + '</h3>' + \
                           new_package_article[content_index + 16:]
     return new_package_article
-def build_homepage(data):
-    num_of_articles = data[data.index("?id=") + 4]
-    num_of_articles = int(num_of_articles)
-    location = "Files/template.html"
-    print "location: " + location
-    f = open(location, 'r')
-    package = f.read()
-    f.close()
-    start_of_article = package.index('<div class="row">')
-    end_of_article = package.index('</div><!--/.row-->') + 18
-    package_start = package[:start_of_article - 1]
-    package_general_article = package[start_of_article:end_of_article]
-    package_end = package[end_of_article + 1:]
-    package = package_start
-    if (num_of_articles != 0):
-        for i in range(1, num_of_articles + 1):
-            package_article = add_article_to_html(package_general_article, i - 1)
-            package = package + package_article
-    package = package + package_end
-    header = OK_200_header_builder("html")
-    package = header + package
-    return package
-def find_type(location):
-    location_parts = location.split('.')
-    type = location_parts[len(location_parts)-1]
-    return type
-def find_file(location):
-    if not (location.startswith("Files/")):
-        location = "Files/" + location
-    print "location: " + location
-    if "?" in location:
-        location = location[:location.index("?")]
-        print "??????????????????????????\n new location: "+location
-    type = find_type(location)
-    f = open(location, 'rb')
-    print "type: "+type
-    package = f.read()
-    f.close()
-    header = OK_200_header_builder(type)
-    package = header + package
-    return package
-def OK_200_header_builder(type):
-    ok_200_header = \
-    "HTTP/1.1 200 OK"\
-    +"\nLast-Modified:" + time.asctime(time.localtime(time.time()))\
-    +"\nContent-Type: " + MIMES[type] \
-    + "\nConnection: Close\n\n"
 
-    print ok_200_header
-    return ok_200_header
-not_found_404 = """HTTP/1.1 404 Not Found
+server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server_ip = '0.0.0.0'
+server_port = 80
+server.bind((server_ip, server_port))
+server.listen(5)
+GenericOkHeader = """HTTP/1.1 200 OK
+Last-Modified:"""+time.asctime( time.localtime(time.time()) )+"""\n\nConnection: Close
+Content-Length:
+"""
+okHeader = """HTTP/1.1 200 OK
+Content-Type: text/html
+Connection: Close
+Content-Length:
+"""
+okHeaderImage = """HTTP/1.1 200 OK
+Content-Type: image/*
+Connection: Close
+Content-Length: """
+notFound = """HTTP/1.1 404 Not Found
 Date: Sun, 18 Oct 2012 10:36:20 GMT
 Server: Apache/2.2.14 (Win32)
 Content-Length: 230
@@ -139,29 +108,13 @@ Content-Type: text/html
    <p>The requested URL /t.html was not found on this server.</p>
 </body>
 </html>"""
-not_found_404_header = """HTTP/1.1 404 Not Found
+notFoundHeader = """HTTP/1.1 404 Not Found
+Content-Length: 0
+Connection: Close
+Content-Type: image/jpg"""
+not_modified_header = """HTTP/1.1 304 Not Modified
 Content-Length: 0
 Connection: Close"""
-MIMES={
-    'html':"text/html",
-    'css': "text/css",
-    'jpg': "image/jpg",
-    'png': "image/png",
-    'js': "application/javascript",
-    'otf': "font/otf",
-    'eot': "application/vnd.ms-fontobject",
-    'svg': "image/svg+xml",
-    'woff': "font\woff"
-}
-not_modified_304_header = """HTTP/1.1 304 Not Modified
-Content-Length: 0
-Connection: Close"""
-server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server_ip = '0.0.0.0'
-server_port = 80
-server.bind((server_ip, server_port))
-server.listen(5)
-
 while True:
     client_socket, client_address = server.accept()
     print 'Connection from: ', client_address
@@ -170,21 +123,57 @@ while True:
     while ifat:
         print 'Received: ', data
         if "If-Modified-Since:" in data:
-            package = not_modified_304_header
-            print "heeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+            package = not_modified_header
         else:
             if(data.split('/')[1].startswith("homepage")):
-                package = build_homepage(data)
-            #request for a specific file
+                num_of_articles = data[data.index("?id=")+4]
+                num_of_articles = int(num_of_articles)
+                print "22222222222222222222222"
+                location = "Files/template.html"
+                f = open(location, 'r')
+                package = f.read()
+                f.close()
+                start_of_article = package.index('<div class="row">')
+                end_of_article = package.index('</div><!--/.row-->')+18
+                print "end:"+package[end_of_article-18:end_of_article]
+                package_start = package[:start_of_article-1]
+                package_general_article =package[start_of_article:end_of_article]
+                package_end = package[end_of_article+1:]
+                package = package_start
+                if(num_of_articles!=0):
+                    for i in range(1,num_of_articles+1):
+                        package_article = add_article_to_html(package_general_article,i-1)
+                        package = package+package_article
+                package = package+package_end
+                package = okHeader + (str(len(package))) + "\n\n" + package
             else:
                 location = data.split()[1][1:]
                 try:
-                    package = find_file(location)
+                    print "location: "+location
+                    if not(location.startswith("Files/")):
+                        location = "Files/"+location
+                    if location.endswith("html"):
+                        print "html"
+                        f = open(location, 'r')
+                        package = f.read()
+                        package = okHeader+(str(len(package)))+"\n\n"+package
+                    elif location.endswith("jpg") or location.endswith("png"):
+                        print "jpg or png"
+                        f = open(location, 'rb')
+                        package = f.read()
+                        package = okHeaderImage +(str(len(package)))+"\n\n"+ package
+                    else:
+                        print "else"
+                        f = open(location, 'r')
+                        package = f.read()
+                        package = GenericOkHeader + (str(len(package))) + "\n\n" + package
+                    #print package
+                    f.close()
                 except IOError:
                     print "111111111111111111111111111111\n"
-                    package = not_found_404_header
+                    package = notFoundHeader
         client_socket.send(package)
         #data = client_socket.recv(1024)
-        #print 'Client disconnected'
+        print 'Client disconnected'
         client_socket.close()
         ifat=0
