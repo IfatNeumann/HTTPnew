@@ -113,6 +113,21 @@ def find_file(location):
     header = OK_200_header_builder(type)
     package = header + package
     return package
+def create_package(data):
+    if "If-Modified-Since:" in data:
+        package = not_modified_304_header
+        print "heeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+    elif (data.split('/')[1].startswith("homepage")):
+        package = build_homepage(data)
+    # request for a specific file
+    else:
+        location = data.split()[1][1:]
+        try:
+            package = find_file(location)
+        except IOError:
+            print "111111111111111111111111111111\n"
+            package = not_found_404_header
+    return package
 def OK_200_header_builder(type):
     ok_200_header = \
     "HTTP/1.1 200 OK"\
@@ -122,6 +137,7 @@ def OK_200_header_builder(type):
 
     print ok_200_header
     return ok_200_header
+
 not_found_404 = """HTTP/1.1 404 Not Found
 Date: Sun, 18 Oct 2012 10:36:20 GMT
 Server: Apache/2.2.14 (Win32)
@@ -142,6 +158,9 @@ Content-Type: text/html
 not_found_404_header = """HTTP/1.1 404 Not Found
 Content-Length: 0
 Connection: Close"""
+not_modified_304_header = """HTTP/1.1 304 Not Modified
+Content-Length: 0
+Connection: Close"""
 MIMES={
     'html':"text/html",
     'css': "text/css",
@@ -153,15 +172,12 @@ MIMES={
     'svg': "image/svg+xml",
     'woff': "font\woff"
 }
-not_modified_304_header = """HTTP/1.1 304 Not Modified
-Content-Length: 0
-Connection: Close"""
+
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server_ip = '0.0.0.0'
 server_port = 80
 server.bind((server_ip, server_port))
 server.listen(5)
-
 while True:
     client_socket, client_address = server.accept()
     print 'Connection from: ', client_address
@@ -169,20 +185,7 @@ while True:
     ifat=1
     while ifat:
         print 'Received: ', data
-        if "If-Modified-Since:" in data:
-            package = not_modified_304_header
-            print "heeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
-        else:
-            if(data.split('/')[1].startswith("homepage")):
-                package = build_homepage(data)
-            #request for a specific file
-            else:
-                location = data.split()[1][1:]
-                try:
-                    package = find_file(location)
-                except IOError:
-                    print "111111111111111111111111111111\n"
-                    package = not_found_404_header
+        package = create_package(data)
         client_socket.send(package)
         #data = client_socket.recv(1024)
         #print 'Client disconnected'
