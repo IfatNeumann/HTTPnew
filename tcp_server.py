@@ -4,7 +4,6 @@
 import socket, threading
 import time
 import articles
-#hi
 ARTICLE1 = {
   'link' : 'http://www.ynet.co.il/articles/0,7340,L-4713571,00.html',
   'img' : 'https://images1.ynet.co.il/PicServer4/2014/08/05/5506384/52203970100690640360no.jpg',
