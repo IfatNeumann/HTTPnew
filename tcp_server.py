@@ -157,10 +157,10 @@ Content-Type: text/html
 </html>"""
 not_found_404_header = """HTTP/1.1 404 Not Found
 Content-Length: 0
-Connection: Close"""
+Connection: Close\n\n"""
 not_modified_304_header = """HTTP/1.1 304 Not Modified
 Content-Length: 0
-Connection: Close"""
+Connection: Close\n\n"""
 MIMES={
     'html':"text/html",
     'css': "text/css",
