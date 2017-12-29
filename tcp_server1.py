@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import socket, threading
+import socket, threading,os
 import time
 
 ARTICLE1 = {
@@ -73,8 +73,11 @@ def add_article_to_html(package_general_article,i):
                           new_package_article[content_index + 16:]
     return new_package_article
 def build_homepage(data):
-    num_of_articles = data[data.index("?id=") + 4]
+    num_of_articles = data[data.index("?id=") + 4:]
+    print "\nnum of articles: "+num_of_articles+"\n"
     num_of_articles = int(num_of_articles)
+    if(num_of_articles>8):
+        num_of_articles=8
     location = "Files/template.html"
     print "location: " + location+"\n"
     f = open(location, 'r')
@@ -91,7 +94,7 @@ def build_homepage(data):
             package_article = add_article_to_html(package_general_article, i - 1)
             package = package + package_article
     package = package + package_end
-    header = OK_200_header_builder("html",package)
+    header = OK_200_header_builder("html",package,location)
     package = header + package
     return package
 def find_type(location):
@@ -110,7 +113,7 @@ def find_file(location):
     print "type: "+type+"\n"
     package = f.read()
     f.close()
-    header = OK_200_header_builder(type,package)
+    header = OK_200_header_builder(type,package,location)
     package = header + package
     return package
 def create_package(data):
@@ -118,7 +121,8 @@ def create_package(data):
         package = not_modified_304_header
         print "heeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\n"
     elif (data.split('/')[1].startswith("homepage")):
-        package = build_homepage(data)
+        location = data.split()[1][1:]
+        package = build_homepage(location)
     # request for a specific file
     else:
         location = data.split()[1][1:]
@@ -128,12 +132,12 @@ def create_package(data):
             print "111111111111111111111111111111\n"
             package = not_found_404_header
     return package
-def OK_200_header_builder(type,package):
+def OK_200_header_builder(type,package,location):
     date = time.asctime(time.localtime(time.time())) +" GMT"
     ok_200_header = \
     "HTTP/1.1 200 OK"\
     + "\nDate: " + date\
-    +"\nLast-Modified: " + date \
+    +"\nLast-Modified: " + time.ctime(os.path.getmtime(location)) \
     +"\nContent-Length: "+ str(len(package)) \
     +"\nContent-Type: " + MIMES[type] \
     + "\nConnection: keep-alive\n\n"
@@ -147,7 +151,7 @@ def func(client_socket):
         package = create_package(data)
         client_socket.send(package)
         data = client_socket.recv(1024)
-    print 'Client disconnected'
+    print '\nClient disconnected\n'
     client_socket.close()
 not_found_404 = """HTTP/1.1 404 Not Found
 Date: Sun, 18 Oct 2012 10:36:20 GMT
@@ -191,5 +195,5 @@ server.bind((server_ip, server_port))
 server.listen(5)
 while True:
     client_socket, client_address = server.accept()
-    print 'Connection from: ', client_address+"\n"
+    print 'Connection from: ', client_address
     threading._start_new_thread(func,(client_socket, ))
