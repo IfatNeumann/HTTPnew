@@ -153,29 +153,12 @@ def func(client_socket):
         data = client_socket.recv(1024)
     print '\nClient disconnected\n'
     client_socket.close()
-not_found_404 = """HTTP/1.1 404 Not Found
-Date: Sun, 18 Oct 2012 10:36:20 GMT
-Server: Apache/2.2.14 (Win32)
-Content-Length: 230
-Connection: Closed
-Content-Type: text/html
-\n\n
-<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">
-<html>
-<head>
-   <title>404 Not Found</title>
-</head>
-<body>
-   <h1>Not Found</h1>
-   <p>The requested URL /t.html was not found on this server.</p>
-</body>
-</html>"""
 not_found_404_header = """HTTP/1.1 404 Not Found
 Content-Length: 0
-Connection: Close\n\n"""
+Connection: keep-alive\n\n"""
 not_modified_304_header = """HTTP/1.1 304 Not Modified
 Content-Length: 0
-Connection: Close\n\n"""
+Connection: keep-alive\n\n"""
 MIMES={
     'html':"text/html",
     'css': "text/css",
