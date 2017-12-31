@@ -1,6 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+# ifat neumann
+# 204646574
+# neumani1
+# 89-350-03
+
 import socket, threading,os
 import time
 
@@ -74,12 +79,10 @@ def add_article_to_html(package_general_article,i):
     return new_package_article
 def build_homepage(data):
     num_of_articles = data[data.index("?id=") + 4:]
-    print "\nnum of articles: "+num_of_articles+"\n"
     num_of_articles = int(num_of_articles)
     if(num_of_articles>8):
         num_of_articles=8
     location = "Files/template.html"
-    print "location: " + location+"\n"
     f = open(location, 'r')
     package = f.read()
     f.close()
@@ -104,13 +107,10 @@ def find_type(location):
 def find_file(location):
     if not (location.startswith("Files/")):
         location = "Files/" + location
-    print "location: " + location+"\n"
     if "?" in location:
         location = location[:location.index("?")]
-        print "??????????????????????????\n new location: "+location+"\n"
     type = find_type(location)
     f = open(location, 'rb')
-    print "type: "+type+"\n"
     package = f.read()
     f.close()
     header = OK_200_header_builder(type,package,location)
@@ -119,7 +119,6 @@ def find_file(location):
 def create_package(data):
     if "If-Modified-Since:" in data:
         package = not_modified_304_header
-        print "heeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\n"
     elif (data.split('/')[1].startswith("homepage")):
         location = data.split()[1][1:]
         package = build_homepage(location)
@@ -128,8 +127,8 @@ def create_package(data):
         location = data.split()[1][1:]
         try:
             package = find_file(location)
+        # if didn't find the file
         except IOError:
-            print "111111111111111111111111111111\n"
             package = not_found_404_header
     return package
 def OK_200_header_builder(type,package,location):
@@ -140,19 +139,22 @@ def OK_200_header_builder(type,package,location):
     +"\nLast-Modified: " + time.ctime(os.path.getmtime(location)) \
     +"\nContent-Length: "+ str(len(package)) \
     +"\nContent-Type: " + MIMES[type] \
-    + "\nConnection: keep-alive\n\n"
-
-    print ok_200_header
+    + "\ nConnection: keep-alive\n\n"
     return ok_200_header
 def func(client_socket):
-    data = client_socket.recv(1024)
-    while not (data == ''):
-        print 'Received: ', data+"\n"
-        package = create_package(data)
-        client_socket.send(package)
+    try:
         data = client_socket.recv(1024)
-    print '\nClient disconnected\n'
-    client_socket.close()
+        while not (data == ''):
+            print 'Received: ', data+"\n"
+            package = create_package(data)
+            client_socket.send(package)
+            data = client_socket.recv(1024)
+        print '\nClient disconnected\n'
+        client_socket.close()
+    except:
+        print '\nClient disconnected\n'
+        client_socket.close()
+
 not_found_404_header = """HTTP/1.1 404 Not Found
 Content-Length: 0
 Connection: keep-alive\n\n"""
@@ -178,5 +180,6 @@ server.bind((server_ip, server_port))
 server.listen(5)
 while True:
     client_socket, client_address = server.accept()
+    client_socket.settimeout(2)
     print 'Connection from: ', client_address
     threading._start_new_thread(func,(client_socket, ))
